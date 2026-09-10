@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  auto-poster:
+    build: .
+    container_name: auto-poster-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ADMIN_USER_IDS=${ADMIN_USER_IDS}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+      - ./token.json:/app/token.json:ro
+      - ./fb_config.json:/app/fb_config.json:ro
+      - ./videos:/app/videos
+      - ./metadata:/app/metadata
+      - ./fb_metadata:/app/fb_metadata
+      - ./ig_metadata:/app/ig_metadata
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Watchtower for auto-updates from GitHub
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: auto-poster-bot

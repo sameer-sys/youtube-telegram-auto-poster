@@ -1,0 +1,73 @@
+name: Run Auto Poster Bot
+
+on:
+  schedule:
+    # Run every 5 hours (GitHub Actions max run = 6 hours)
+    # This keeps the bot alive ~24/7 with restarts
+    - cron: '0 */5 * * *'
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # Max allowed (6 hours)
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Decode credentials from secrets
+        env:
+          CREDENTIALS_JSON_B64: ${{ secrets.CREDENTIALS_JSON_B64 }}
+          TOKEN_JSON_B64: ${{ secrets.TOKEN_JSON_B64 }}
+          FB_CONFIG_JSON_B64: ${{ secrets.FB_CONFIG_JSON_B64 }}
+        run: |
+          if [ -n "$CREDENTIALS_JSON_B64" ]; then
+            echo "$CREDENTIALS_JSON_B64" | base64 -d > credentials.json
+          fi
+          if [ -n "$TOKEN_JSON_B64" ]; then
+            echo "$TOKEN_JSON_B64" | base64 -d > token.json
+          fi
+          if [ -n "$FB_CONFIG_JSON_B64" ]; then
+            echo "$FB_CONFIG_JSON_B64" | base64 -d > fb_config.json
+          fi
+          ls -la *.json
+
+      - name: Run bot (6 hours)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADMIN_USER_IDS: ${{ secrets.ADMIN_USER_IDS }}
+          HEALTH_PORT: 8080
+        run: |
+          # Start health server in background
+          python -c "
+          import threading, json, time
+          from http.server import HTTPServer, BaseHTTPRequestHandler
+          class H(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  self.send_response(200)
+                  self.send_header('Content-type','application/json')
+                  self.end_headers()
+                  self.wfile.write(json.dumps({'status':'running'}).encode())
+              def log_message(self, *a): pass
+          threading.Thread(target=lambda: HTTPServer(('0.0.0.0',8080),H).serve_forever(), daemon=True).start()
+          time.sleep(999999)
+          " &
+          
+          # Run the bot
+          python auto_poster.py
+
+      - name: Keep alive notification
+        if: always()
+        run: |
+          echo "Bot run finished. Next scheduled run in ~5 hours."

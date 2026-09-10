@@ -1,0 +1,15 @@
+﻿# Secrets - NEVER COMMIT
+token.json
+credentials.json
+.env
+*.json
+auth_log.txt
+bot_crash.log
+crash_dump.log
+*.log
+*.mp4
+*.png
+__pycache__/
+.opencode/
+.playwright-mcp/
+scripts/

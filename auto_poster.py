@@ -1,0 +1,110 @@
+import os
+import sys
+import json
+import logging
+import requests
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2.credentials import Credentials
+
+# Load .env
+def load_env():
+    env_path = ".env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"): continue
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    os.environ[key.strip()] = value.strip()
+
+load_env()
+
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+ADMIN_USER_IDS = os.environ.get("ADMIN_USER_IDS", "").split(",")
+
+logging.basicConfig(filename="bot_activity.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
+
+class YouTubePoster:
+    def __init__(self):
+        self.token_path = "token.json"
+
+    def get_service(self):
+        with open(self.token_path, "r") as f:
+            token_data = json.load(f)
+        creds = Credentials(
+            token=token_data.get("access_token"),
+            refresh_token=token_data.get("refresh_token"),
+            token_uri=token_data.get("token_uri", "https://oauth2.googleapis.com/token"),
+            client_id=token_data.get("client_id"),
+            client_secret=token_data.get("client_secret")
+        )
+        return build("youtube", "v3", credentials=creds)
+
+    def upload(self, file_path, title="AI Uploaded Video", desc="Posted via Auto-Poster Bot"):
+        try:
+            youtube = self.get_service()
+            body = {
+                "snippet": {"title": title, "description": desc, "categoryId": "22"},
+                "status": {"privacyStatus": "public"}
+            }
+            # Simple upload without progress tracking to avoid the "tuple" error
+            media = MediaFileUpload(file_path)
+            request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+            response = request.execute()
+            
+            return f"https://www.youtube.com/watch?v={response['id']}"
+        except Exception as e:
+            logger.error(f"YouTube upload failed: {e}")
+            return None
+
+class AutoPoster:
+    def __init__(self):
+        self.yt = YouTubePoster()
+
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("Bot is online! Send me a video.")
+
+    async def handle_video(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = str(update.effective_user.id)
+        if user_id not in ADMIN_USER_IDS and "YOUR_USER_ID_HERE" in ADMIN_USER_IDS:
+            return
+
+        logger.info(f"Processing video from {user_id}")
+        await update.message.reply_text("?? Video received! Uploading to YouTube...")
+        
+        try:
+            video_file = await update.message.video.get_file()
+            file_path = f"temp_{user_id}_{video_file.file_id}.mp4"
+            await video_file.download_to_drive(file_path)
+            
+            url = self.yt.upload(file_path)
+            
+            if url:
+                await update.message.reply_text(f"? Posted to YouTube!\n\nLink: {url}")
+            else:
+                await update.message.reply_text("? YouTube upload failed. Check logs.")
+            
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            logger.error(f"Bot handle_video error: {e}")
+            await update.message.reply_text(f"? Error: {e}")
+
+def main():
+    if not BOT_TOKEN:
+        print("No BOT_TOKEN")
+        return
+    app = Application.builder().token(BOT_TOKEN).build()
+    poster = AutoPoster()
+    app.add_handler(CommandHandler("start", poster.start))
+    app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, poster.handle_video))
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()

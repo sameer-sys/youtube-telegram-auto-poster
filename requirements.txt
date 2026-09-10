@@ -1,0 +1,21 @@
+# YouTube Shorts Posting Bot Dependencies
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+google-api-python-client>=2.108.0
+httplib2>=0.22.0
+
+# Facebook/Instagram Posting Bot Dependencies
+facebook-business>=20.0.0
+requests>=2.31.0
+
+# Telegram Bot
+python-telegram-bot>=21.0
+
+# Async & Utilities
+aiohttp>=3.9.0
+aiofiles>=23.2.0
+python-dotenv>=1.0.0
+
+# Video Processing (for encoding validation)
+ffmpeg-python>=0.2.0
