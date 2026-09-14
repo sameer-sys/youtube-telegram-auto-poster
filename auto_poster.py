@@ -106,15 +106,15 @@ class AutoPoster:
                     logger.error(f"FB upload error: {e}")
                     fb_result = f"FAILED: {e}"
             
-            # 3. Instagram Reel
-            ig_result = None
-            if self.ig_poster:
+            # 3. Instagram Reel (auto-shared from FB Page, best-effort only)
+            ig_result = "SKIPPED (auto-shared from Facebook)"
+            if self.ig_poster and fb_result and not str(fb_result).startswith("FAILED") and not str(fb_result).startswith("SKIP"):
                 try:
                     ig_meta = generate_ig_metadata(file_path, caption, hashtags)
                     ig_result = self.ig_poster.upload_reel(ig_meta)
                 except Exception as e:
                     logger.error(f"IG upload error: {e}")
-                    ig_result = f"FAILED: {e}"
+                    ig_result = f"FAILED (auto-shared from FB anyway): {e}"
             
             reply = f"YouTube: {url if url else 'FAILED'}\n"
             reply += f"Facebook: {fb_result if fb_result else 'SKIPPED'}\n"

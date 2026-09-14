@@ -100,38 +100,33 @@ class FacebookPoster:
     def upload_reel(self, metadata: PostMetadata) -> Optional[str]:
         """Upload video as Facebook Reel"""
         try:
-            page = Page(self.page_id)
-            
             # Build caption with question and hashtags
             full_caption = self._build_caption(metadata.caption, metadata.hashtags)
             
-            # Upload video (local file or URL)
+            # Upload video via direct Graph API multipart
             if os.path.exists(metadata.video_path):
-                video = AdVideo(parent_id=self.page_id)
+                url = f"https://graph.facebook.com/v26.0/{self.page_id}/videos"
                 with open(metadata.video_path, 'rb') as f:
-                    video.api_create(
-                        params={
-                            'description': full_caption,
-                            'title': metadata.caption[:100],
-                        },
-                        files={'source': f}
-                    )
-            else:
-                video = AdVideo(parent_id=self.page_id)
-                video.api_create(
-                    params={
-                        'file_url': metadata.video_path,
+                    resp = requests.post(url, data={
                         'description': full_caption,
                         'title': metadata.caption[:100],
-                    }
-                )
+                        'access_token': self.access_token,
+                    }, files={'source': f})
+            else:
+                url = f"https://graph.facebook.com/v26.0/{self.page_id}/videos"
+                resp = requests.post(url, data={
+                    'file_url': metadata.video_path,
+                    'description': full_caption,
+                    'title': metadata.caption[:100],
+                    'access_token': self.access_token,
+                })
             
-            video_id = video['id']
+            result = resp.json()
+            if 'error' in result:
+                raise Exception(result['error'].get('message', str(result)))
+            
+            video_id = result.get('id') or result.get('video_id')
             logger.info(f"Facebook Reel uploaded: {video_id}")
-            
-            # Wait for processing and publish as Reel
-            self._publish_reel(video_id, full_caption)
-            
             return video_id
             
         except Exception as e:
