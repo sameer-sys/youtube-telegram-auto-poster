@@ -20,6 +20,7 @@ import requests
 from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.page import Page
 from facebook_business.adobjects.advideo import AdVideo as Video
+from facebook_business.adobjects.advideo import AdVideo
 from facebook_business.adobjects.iguser import IGUser
 from facebook_business.adobjects.igmedia import IGMedia
 
@@ -213,15 +214,16 @@ class InstagramPoster:
             media_id = media['id']
             logger.info(f"IG media container created: {media_id}, waiting for processing...")
             
-            # Poll until media is ready (max 5 min)
+            # Poll until media is ready (max 5 min) - direct Graph API call
             import time as _time
             for _ in range(30):
                 _time.sleep(10)
-                info = ig_user.api_get(
-                    fields=['status_code'],
-                    params={'media_id': media_id}
+                resp = requests.get(
+                    f"https://graph.facebook.com/v26.0/{media_id}",
+                    params={'fields': 'status_code', 'access_token': self.access_token}
                 )
-                status = info.get('status_code', '')
+                data = resp.json()
+                status = data.get('status_code', '')
                 if status == 'FINISHED':
                     break
                 elif status == 'ERROR':
