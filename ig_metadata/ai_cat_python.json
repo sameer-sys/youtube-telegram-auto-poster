@@ -1,0 +1,12 @@
+{
+  "platform": "instagram",
+  "video_path": "https://your-cdn.com/videos/ai_cat_python.mp4",
+  "caption": "AI Cat Python Tutorial\n\nWatch this AI cat master Python programming in just 30 seconds!",
+  "hashtags": ["AI", "coding", "cats", "python", "tech", "programming", "tutorial", "funny"],
+  "thumbnail_path": "https://your-cdn.com/videos/ai_cat_python_thumb.jpg",
+  "scheduled_time": null,
+  "status": "pending",
+  "post_id": null,
+  "error": null,
+  "ai_generated": true
+}

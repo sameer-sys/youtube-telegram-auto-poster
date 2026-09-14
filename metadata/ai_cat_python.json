@@ -1,0 +1,12 @@
+{
+  "title": "AI Cat Learns Python in 30 Seconds",
+  "description": "Watch this AI cat master Python programming! 🐱💻",
+  "hashtags": ["AI", "coding", "cats", "python", "tech"],
+  "video_path": "videos/ai_cat_python.mp4",
+  "thumbnail_path": "videos/ai_cat_python_thumb.jpg",
+  "ai_generated": true,
+  "scheduled_time": null,
+  "status": "pending",
+  "video_id": null,
+  "error": null
+}

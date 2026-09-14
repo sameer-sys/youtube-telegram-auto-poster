@@ -10,6 +10,10 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
 
+# FB/IG integration
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fb_ig import FacebookPoster, InstagramPoster, generate_fb_metadata, generate_ig_metadata, save_fb_metadata, save_ig_metadata, load_fb_config
+
 # Load .env
 def load_env():
     env_path = ".env"
@@ -66,6 +70,9 @@ class YouTubePoster:
 class AutoPoster:
     def __init__(self):
         self.yt = YouTubePoster()
+        self.fb_config = load_fb_config()
+        self.fb_poster = FacebookPoster(self.fb_config) if self.fb_config.get('page_access_token') else None
+        self.ig_poster = InstagramPoster(self.fb_config) if self.fb_config.get('ig_access_token') else None
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Bot is online! Send me a video.")
@@ -76,25 +83,49 @@ class AutoPoster:
             return
 
         logger.info(f"Processing video from {user_id}")
-        await update.message.reply_text("?? Video received! Uploading to YouTube...")
+        await update.message.reply_text("Video received! Uploading to YouTube, Facebook & Instagram...")
         
         try:
             video_file = await update.message.video.get_file()
             file_path = f"temp_{user_id}_{video_file.file_id}.mp4"
             await video_file.download_to_drive(file_path)
             
-            url = self.yt.upload(file_path)
+            caption = update.message.caption or "AI Cartoon Video"
+            hashtags = ["AI", "cartoon", "animation", "funny", "viral", "trending", "reels", "shorts"]
             
-            if url:
-                await update.message.reply_text(f"? Posted to YouTube!\n\nLink: {url}")
-            else:
-                await update.message.reply_text("? YouTube upload failed. Check logs.")
+            # 1. YouTube
+            url = self.yt.upload(file_path, title=caption[:100], desc=caption)
+            
+            # 2. Facebook Reel
+            fb_result = None
+            if self.fb_poster:
+                try:
+                    fb_meta = generate_fb_metadata(file_path, caption, hashtags)
+                    fb_result = self.fb_poster.upload_reel(fb_meta)
+                except Exception as e:
+                    logger.error(f"FB upload error: {e}")
+                    fb_result = f"FAILED: {e}"
+            
+            # 3. Instagram Reel
+            ig_result = None
+            if self.ig_poster:
+                try:
+                    ig_meta = generate_ig_metadata(file_path, caption, hashtags)
+                    ig_result = self.ig_poster.upload_reel(ig_meta)
+                except Exception as e:
+                    logger.error(f"IG upload error: {e}")
+                    ig_result = f"FAILED: {e}"
+            
+            reply = f"YouTube: {url if url else 'FAILED'}\n"
+            reply += f"Facebook: {fb_result if fb_result else 'SKIPPED'}\n"
+            reply += f"Instagram: {ig_result if ig_result else 'SKIPPED'}"
+            await update.message.reply_text(reply)
             
             if os.path.exists(file_path):
                 os.remove(file_path)
         except Exception as e:
             logger.error(f"Bot handle_video error: {e}")
-            await update.message.reply_text(f"? Error: {e}")
+            await update.message.reply_text(f"Error: {e}")
 
 def main():
     if not BOT_TOKEN:
