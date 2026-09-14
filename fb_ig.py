@@ -106,8 +106,9 @@ class FacebookPoster:
             
             # Upload video (local file or URL)
             if os.path.exists(metadata.video_path):
+                video = AdVideo(parent_id=self.page_id)
                 with open(metadata.video_path, 'rb') as f:
-                    video = page.create_video(
+                    video.api_create(
                         params={
                             'description': full_caption,
                             'title': metadata.caption[:100],
@@ -115,7 +116,8 @@ class FacebookPoster:
                         files={'source': f}
                     )
             else:
-                video = page.create_video(
+                video = AdVideo(parent_id=self.page_id)
+                video.api_create(
                     params={
                         'file_url': metadata.video_path,
                         'description': full_caption,
@@ -209,6 +211,21 @@ class InstagramPoster:
             )
             
             media_id = media['id']
+            logger.info(f"IG media container created: {media_id}, waiting for processing...")
+            
+            # Poll until media is ready (max 5 min)
+            import time as _time
+            for _ in range(30):
+                _time.sleep(10)
+                info = ig_user.api_get(
+                    fields=['status_code'],
+                    params={'media_id': media_id}
+                )
+                status = info.get('status_code', '')
+                if status == 'FINISHED':
+                    break
+                elif status == 'ERROR':
+                    raise Exception("IG media processing failed")
             
             # Publish
             publish_result = ig_user.create_media_publish(
