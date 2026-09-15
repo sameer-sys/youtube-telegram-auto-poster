@@ -96,40 +96,18 @@ class AutoPoster:
             # 1. YouTube
             url = self.yt.upload(file_path, title=caption[:100], desc=caption)
             
-            # 2. Facebook Reel
+            # 2. Facebook Reel (auto-cross-posts to Instagram)
             fb_result = None
-            fb_video_url = None
             if self.fb_poster:
                 try:
                     fb_meta = generate_fb_metadata(file_path, caption, hashtags)
                     fb_result = self.fb_poster.upload_reel(fb_meta)
-                    # Get FB video public URL for IG
-                    if fb_result and not str(fb_result).startswith("FAILED"):
-                        import time as _t
-                        for attempt in range(6):
-                            try:
-                                _t.sleep(10)
-                                r = requests.get(f"https://graph.facebook.com/v26.0/{fb_result}",
-                                    params={'fields': 'source', 'access_token': self.fb_config.get('page_access_token')})
-                                fb_video_url = r.json().get('source')
-                                if fb_video_url:
-                                    logger.info(f"FB video URL obtained: {fb_video_url[:80]}...")
-                                    break
-                            except Exception as e:
-                                logger.error(f"Get FB video URL attempt {attempt+1}: {e}")
                 except Exception as e:
                     logger.error(f"FB upload error: {e}")
                     fb_result = f"FAILED: {e}"
             
-            # 3. Instagram Reel (using FB public video URL)
-            ig_result = "SKIPPED (no FB video)"
-            if self.ig_poster and fb_video_url:
-                try:
-                    ig_meta = generate_ig_metadata(fb_video_url, caption, hashtags)
-                    ig_result = self.ig_poster.upload_reel(ig_meta)
-                except Exception as e:
-                    logger.error(f"IG upload error: {e}")
-                    ig_result = f"FAILED: {e}"
+            # 3. Instagram - auto cross-posted from Facebook (page already linked to IG)
+            ig_result = "Auto-shared from Facebook to Instagram ✅"
             
             reply = f"YouTube: {url if url else 'FAILED'}\n"
             reply += f"Facebook: {fb_result if fb_result else 'SKIPPED'}\n"
