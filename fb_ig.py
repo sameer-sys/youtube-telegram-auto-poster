@@ -104,6 +104,7 @@ class FacebookPoster:
             full_caption = self._build_caption(metadata.caption, metadata.hashtags)
             
             # Upload video via direct Graph API multipart
+            ig_account_id = self.config.get('ig_user_id', '')
             if os.path.exists(metadata.video_path):
                 url = f"https://graph.facebook.com/v26.0/{self.page_id}/videos"
                 with open(metadata.video_path, 'rb') as f:
@@ -111,6 +112,7 @@ class FacebookPoster:
                         'description': full_caption,
                         'title': metadata.caption[:100],
                         'access_token': self.access_token,
+                        'crossposting_whitelisted_ig_accounts': f"[{ig_account_id}]" if ig_account_id else '',
                     }, files={'source': f})
             else:
                 url = f"https://graph.facebook.com/v26.0/{self.page_id}/videos"
@@ -119,6 +121,7 @@ class FacebookPoster:
                     'description': full_caption,
                     'title': metadata.caption[:100],
                     'access_token': self.access_token,
+                    'crossposting_whitelisted_ig_accounts': f"[{ig_account_id}]" if ig_account_id else '',
                 })
             
             result = resp.json()
@@ -196,11 +199,27 @@ class InstagramPoster:
             # Build caption: keywords first line + hashtags
             full_caption = self._build_caption(metadata.caption, metadata.hashtags)
             
+            # If local file, upload to catbox (free public host) to get public URL
+            video_url = metadata.video_path
+            if os.path.exists(metadata.video_path) and not metadata.video_path.startswith('http'):
+                logger.info("Uploading video to catbox for public URL...")
+                with open(metadata.video_path, 'rb') as f:
+                    cb = requests.post(
+                        'https://catbox.moe/user/api.php',
+                        data={'reqtype': 'fileupload'},
+                        files={'fileToUpload': (os.path.basename(metadata.video_path), f, 'video/mp4')},
+                        timeout=180
+                    )
+                video_url = cb.text.strip()
+                if not video_url.startswith('http'):
+                    raise Exception(f"Catbox upload failed: {cb.text[:200]}")
+                logger.info(f"Public video URL: {video_url}")
+            
             # Create media container
             media = ig_user.create_media(
                 params={
                     'media_type': 'REELS',
-                    'video_url': metadata.video_path,  # Must be publicly accessible URL
+                    'video_url': video_url,
                     'caption': full_caption,
                     'share_to_feed': True,
                 }

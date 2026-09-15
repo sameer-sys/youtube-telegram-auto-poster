@@ -106,8 +106,15 @@ class AutoPoster:
                     logger.error(f"FB upload error: {e}")
                     fb_result = f"FAILED: {e}"
             
-            # 3. Instagram - auto cross-posted from Facebook (page already linked to IG)
-            ig_result = "Auto-shared from Facebook to Instagram ✅"
+            # 3. Instagram Reel (direct IG API via public URL)
+            ig_result = "SKIPPED"
+            if self.ig_poster:
+                try:
+                    ig_meta = generate_ig_metadata(file_path, caption, hashtags)
+                    ig_result = self.ig_poster.upload_reel(ig_meta)
+                except Exception as e:
+                    logger.error(f"IG upload error: {e}")
+                    ig_result = f"FAILED: {e}"
             
             reply = f"YouTube: {url if url else 'FAILED'}\n"
             reply += f"Facebook: {fb_result if fb_result else 'SKIPPED'}\n"
