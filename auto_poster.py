@@ -31,6 +31,13 @@ load_env()
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 ADMIN_USER_IDS = os.environ.get("ADMIN_USER_IDS", "").split(",")
 
+# Cloud-friendly: YouTube creds from env (JSON) or token.json file
+def get_youtube_creds():
+    if os.environ.get("YOUTUBE_TOKEN_JSON"):
+        return json.loads(os.environ["YOUTUBE_TOKEN_JSON"])
+    with open("token.json", "r") as f:
+        return json.load(f)
+
 logging.basicConfig(filename="bot_activity.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -39,8 +46,7 @@ class YouTubePoster:
         self.token_path = "token.json"
 
     def get_service(self):
-        with open(self.token_path, "r") as f:
-            token_data = json.load(f)
+        token_data = get_youtube_creds()
         creds = Credentials(
             token=token_data.get("access_token"),
             refresh_token=token_data.get("refresh_token"),

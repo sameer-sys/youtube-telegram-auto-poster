@@ -465,10 +465,21 @@ def save_ig_metadata(metadata: PostMetadata, filename: str):
 
 # ==================== CONFIG LOADER ====================
 def load_fb_config() -> Dict:
-    if os.path.exists(FB_CONFIG_FILE):
+    """Load config from env vars first (cloud), fallback to file (local)."""
+    cfg = {}
+    if os.environ.get("FB_PAGE_ACCESS_TOKEN"):
+        cfg = {
+            "page_access_token": os.environ.get("FB_PAGE_ACCESS_TOKEN"),
+            "page_id": os.environ.get("FB_PAGE_ID", ""),
+            "app_id": os.environ.get("FB_APP_ID", ""),
+            "app_secret": os.environ.get("FB_APP_SECRET", ""),
+            "ig_access_token": os.environ.get("FB_PAGE_ACCESS_TOKEN"),
+            "ig_user_id": os.environ.get("IG_USER_ID", ""),
+        }
+    if not cfg and os.path.exists(FB_CONFIG_FILE):
         with open(FB_CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+            cfg = json.load(f)
+    return cfg
 
 
 def create_sample_config():

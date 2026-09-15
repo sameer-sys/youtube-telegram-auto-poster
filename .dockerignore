@@ -1,0 +1,12 @@
+# Docker / Cloud
+Dockerfile
+.dockerignore
+gh_push_api.py
+check_recent.py
+hands.py
+brain.py
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
