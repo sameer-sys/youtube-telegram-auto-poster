@@ -1,0 +1,10 @@
+{
+  "name": "omniroute-cloud",
+  "version": "1.0.0",
+  "description": "Ultra-fast cloud proxy for OpenWork",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}
